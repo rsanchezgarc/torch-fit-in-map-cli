@@ -1,0 +1,138 @@
+# https://peps.python.org/pep-0517/
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+# https://hatch.pypa.io/latest/config/metadata/
+[tool.hatch.version]
+source = "vcs"
+fallback-version = "0.1.0"
+
+[tool.hatch.build.targets.wheel]
+only-include = ["src"]
+sources = ["src"]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+# https://peps.python.org/pep-0621/
+[project]
+name = "torch-fit-in-map-cli"
+dynamic = ["version"]
+description = "Command-line wrapper for torch-fit-in-map (MRC/PDB file I/O + CLIs)"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "BSD-3-Clause" }
+authors = [{ name = "TeamTomo contributors" }]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Typing :: Typed",
+]
+dependencies = [
+    "torch",
+    "typer",
+    "mrcfile",
+    "mmdf",
+    "numpy",
+    "torch-fourier-filter",
+    "torch-fit-in-map",
+    "torch-calculate-electrostatic-potential @ git+https://github.com/teamtomo/torch-calculate-electrostatic-potential.git",
+]
+
+[project.urls]
+homepage = "https://github.com/teamtomo/torch-fit-in-map-cli"
+repository = "https://github.com/teamtomo/torch-fit-in-map-cli"
+
+[project.scripts]
+torch-fit-in-map = "torch_fit_in_map_cli._cli:align_app"
+torch-fit-in-atomic-model = "torch_fit_in_map_cli._cli:fit_in_atomic_model_app"
+torch-simulate-density = "torch_fit_in_map_cli._cli:simulate_app"
+
+# https://peps.python.org/pep-0735/
+[dependency-groups]
+test = ["pytest", "pytest-cov"]
+dev = [
+    { include-group = "test" },
+    "ipython",
+    "mypy",
+    "pdbpp",
+    "pre-commit",
+    "rich",
+    "ruff",
+]
+
+# https://docs.astral.sh/ruff
+[tool.ruff]
+line-length = 88
+target-version = "py311"
+src = ["src"]
+
+[tool.ruff.lint]
+pydocstyle = { convention = "numpy" }
+select = [
+    "E",
+    "W",
+    "F",
+    "D",
+    "D417",
+    "I",
+    "UP",
+    "C4",
+    "B",
+    "A001",
+    "RUF",
+    "TCH",
+    "TID",
+]
+ignore = [
+    "D401",
+    # Scientific docstrings/help intentionally use unicode (Å, ×, – ) for clarity.
+    "RUF001",
+    "RUF002",
+    "RUF003",
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*.py" = ["D", "S"]
+# typer resolves annotations at runtime (get_type_hints), so Path/type imports
+# must stay importable at module level; help strings are intentionally verbose.
+"src/torch_fit_in_map_cli/_cli.py" = ["E501", "TC001", "TC002", "TC003"]
+
+[tool.ruff.format]
+docstring-code-format = true
+skip-magic-trailing-comma = false
+
+[tool.mypy]
+files = "src/**/"
+strict = true
+disallow_any_generics = false
+disallow_subclassing_any = false
+show_error_codes = true
+pretty = true
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+filterwarnings = ["error"]
+markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
+addopts = "-m 'not slow'"
+
+[tool.coverage.report]
+show_missing = true
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "@overload",
+    "except ImportError",
+    "\\.\\.\\.",
+    "raise NotImplementedError()",
+    "pass",
+]
+
+[tool.coverage.run]
+source = ["torch_fit_in_map_cli"]
