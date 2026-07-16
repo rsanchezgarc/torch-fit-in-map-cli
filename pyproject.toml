@@ -45,8 +45,8 @@ dependencies = [
 ]
 
 [project.urls]
-homepage = "https://github.com/teamtomo/torch-fit-in-map-cli"
-repository = "https://github.com/teamtomo/torch-fit-in-map-cli"
+homepage = "https://github.com/rsanchezgarc/torch-fit-in-map-cli"
+repository = "https://github.com/rsanchezgarc/torch-fit-in-map-cli"
 
 [project.scripts]
 torch-fit-in-map = "torch_fit_in_map_cli._cli:align_app"
