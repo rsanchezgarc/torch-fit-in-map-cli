@@ -49,7 +49,8 @@ def transform_atomic_model(
 ) -> None:
     """Read a model, apply an alignment transform to its atoms, and write it out.
 
-    Thin file wrapper around :func:`torch_fit_in_map.transform_atoms`: it reads
+    Thin file wrapper around
+    :func:`torch_fit_in_map.apply_alignment_to_structure`: it reads
     the atoms with ``mmdf``, applies the coordinate transform, and writes the
     result.  The output format is controlled by the ``output_path`` extension
     (``.pdb`` or ``.cif``).
@@ -73,7 +74,7 @@ def transform_atomic_model(
     ref_origin_xyz : tuple[float, float, float]
         XYZ origin of the reference map in Angstroms (from MRC header).
     """
-    from torch_fit_in_map import AlignmentResult, transform_atoms
+    from torch_fit_in_map import AlignmentResult, apply_alignment_to_structure
 
     atoms = read_atoms(input_path)
     result = AlignmentResult(
@@ -81,7 +82,7 @@ def transform_atomic_model(
         translation_pixels_zyx,
         score=float("nan"),
     )
-    transformed = transform_atoms(
+    transformed = apply_alignment_to_structure(
         atoms,
         result,
         pixel_size=pixel_size,

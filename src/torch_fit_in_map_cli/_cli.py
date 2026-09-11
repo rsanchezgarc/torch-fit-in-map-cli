@@ -92,10 +92,10 @@ def simulate(
 ) -> None:
     """Simulate an MRC density map from an atomic model.
 
-    Uses the default DensitySimulator (torch-calculate-electrostatic-potential).
+    Uses the default PotentialSimulator (torch-calculate-electrostatic-potential).
     """
     import torch
-    from torch_fit_in_map import DEFAULT_SIMULATOR
+    from torch_fit_in_map import DEFAULT_POTENTIAL_SIMULATOR
 
     from ._mrc import save_mrc
     from ._pdb import pdb_centroid_xyz, read_atoms
@@ -124,7 +124,7 @@ def simulate(
         err=True,
     )
     atoms = read_atoms(model)
-    density = DEFAULT_SIMULATOR.simulate(
+    density = DEFAULT_POTENTIAL_SIMULATOR.simulate(
         atoms=atoms,
         pixel_size=pixel_size,
         box_size=box_size,
@@ -370,13 +370,15 @@ def align(
             verbose=not quiet,
         )
         mobile_tensor: torch.Tensor | None = (
-            result.simulated_volume if result.simulated_volume is not None else None
+            result.simulated_potential
+            if result.simulated_potential is not None
+            else None
         )
 
-        if save_simulated is not None and result.simulated_volume is not None:
+        if save_simulated is not None and result.simulated_potential is not None:
             _ref_shape, ref_px, ref_origin = read_mrc_header(reference)
             aligned_sim = apply_alignment(
-                result.simulated_volume.to(primary_device), result
+                result.simulated_potential.to(primary_device), result
             )
             save_mrc(
                 save_simulated, aligned_sim, pixel_size=ref_px, origin_xyz=ref_origin
@@ -651,10 +653,10 @@ def fit_in_atomic_model(
         centroid_xyz[2] - box_centre_a,
     )
 
-    if save_simulated is not None and result.simulated_volume is not None:
+    if save_simulated is not None and result.simulated_potential is not None:
         save_mrc(
             save_simulated,
-            result.simulated_volume,
+            result.simulated_potential,
             pixel_size=sim_px,
             origin_xyz=sim_origin_xyz,
         )

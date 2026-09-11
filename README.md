@@ -16,12 +16,20 @@ density maps and `pandas.DataFrame` atom tables. This package owns all the
 
 ## Installation
 
+`torch-fit-in-map` and the simulation primitives it uses
+(`torch-calculate-electrostatic-potential`, `torch-structure-manipulation`) live
+in the [TeamTomo monorepo](https://github.com/teamtomo/teamtomo) and are not yet
+on PyPI. Install with [uv](https://docs.astral.sh/uv/), which resolves them from
+the monorepo:
+
 ```bash
-pip install torch-fit-in-map-cli
+git clone https://github.com/rsanchezgarc/torch-fit-in-map-cli
+cd torch-fit-in-map-cli
+uv sync
 ```
 
-This pulls in `torch-fit-in-map` and the density simulator
-`torch-calculate-electrostatic-potential`.
+Atomic models are simulated as electrostatic potential maps using each atom's
+B-factor (`b_isotropic`) from the model file.
 
 ## Commands
 
