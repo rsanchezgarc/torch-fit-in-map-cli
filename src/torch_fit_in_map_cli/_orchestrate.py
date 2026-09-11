@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 import torch
 from torch_fit_in_map import (
-    DEFAULT_SIMULATOR,
+    DEFAULT_POTENTIAL_SIMULATOR,
     AlignmentResult,
     ExhaustiveSearchConfig,
     GradientRefinementConfig,
@@ -21,7 +21,7 @@ from ._pdb import read_atoms
 if TYPE_CHECKING:
     import os
 
-    from torch_fit_in_map import DensitySimulator
+    from torch_fit_in_map import PotentialSimulator
 
 
 def _low_pass(
@@ -98,7 +98,7 @@ def fit_map_in_pdb_from_files(
     *,
     desired_resolution_angstroms: float | None = None,
     save_simulated: bool = False,
-    simulator: DensitySimulator | None = None,
+    simulator: PotentialSimulator | None = None,
     exhaustive_config: ExhaustiveSearchConfig | None = None,
     gradient_config: GradientRefinementConfig | None = None,
     mask_path: str | os.PathLike[str] | None = None,
@@ -114,7 +114,7 @@ def fit_map_in_pdb_from_files(
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if simulator is None:
-        simulator = DEFAULT_SIMULATOR
+        simulator = DEFAULT_POTENTIAL_SIMULATOR
 
     mobile_map, mob_px = load_mrc(mobile_map_path)
     mobile_map = mobile_map.to(device)
@@ -174,7 +174,7 @@ def fit_map_in_pdb_from_files(
     )
 
     if save_simulated:
-        result.simulated_volume = simulated.cpu()
+        result.simulated_potential = simulated.cpu()
 
     return result
 
@@ -188,7 +188,7 @@ def fit_pdb_in_map_from_files(
     desired_resolution_angstroms: float | None = None,
     save_simulated: bool = False,
     simulated_output_path: str | os.PathLike[str] | None = None,
-    simulator: DensitySimulator | None = None,
+    simulator: PotentialSimulator | None = None,
     exhaustive_config: ExhaustiveSearchConfig | None = None,
     gradient_config: GradientRefinementConfig | None = None,
     mask_path: str | os.PathLike[str] | None = None,
@@ -204,7 +204,7 @@ def fit_pdb_in_map_from_files(
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     if simulator is None:
-        simulator = DEFAULT_SIMULATOR
+        simulator = DEFAULT_POTENTIAL_SIMULATOR
 
     density_map, map_px = load_mrc(reference_map_path)
     density_map = density_map.to(device)
@@ -263,7 +263,7 @@ def fit_pdb_in_map_from_files(
     )
 
     if save_simulated:
-        result.simulated_volume = simulated.cpu()
+        result.simulated_potential = simulated.cpu()
 
     if simulated_output_path is not None:
         from ._mrc import save_mrc

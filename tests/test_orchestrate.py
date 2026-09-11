@@ -1,8 +1,7 @@
 """Tests for the file-path orchestration wrappers."""
 
-import sys
+import math
 
-import pytest
 import torch
 
 
@@ -44,21 +43,25 @@ def test_fit_map_in_map_from_files_voxel_mismatch(random_map):
     assert isinstance(result.score, float)
 
 
-def test_fit_pdb_in_map_from_files_raises_without_espcalculator(
-    tiny_pdb, random_map, monkeypatch
-):
-    """The default simulator surfaces a helpful error when espcalculator is missing."""
+def test_fit_pdb_in_map_from_files_default_simulator(tiny_pdb, random_map):
+    """The default potential simulator runs end-to-end on a tiny model."""
+    from torch_fit_in_map import ExhaustiveSearchConfig
+
     from torch_fit_in_map_cli import fit_pdb_in_map_from_files
 
     map_path = random_map("map.mrc")
-    monkeypatch.setitem(sys.modules, "espcalculator", None)
 
-    pattern = r"espcalculator|torch-calculate"
-    with pytest.raises((ImportError, Exception), match=pattern):
-        fit_pdb_in_map_from_files(
-            mobile_pdb_path=tiny_pdb,
-            reference_map_path=map_path,
-            pixel_size_angstroms=1.0,
-            box_size=20,
-            verbose=False,
-        )
+    result = fit_pdb_in_map_from_files(
+        mobile_pdb_path=tiny_pdb,
+        reference_map_path=map_path,
+        pixel_size_angstroms=1.0,
+        box_size=20,
+        save_simulated=True,
+        exhaustive_config=ExhaustiveSearchConfig(angular_step_degrees=90.0),
+        device=torch.device("cpu"),
+        verbose=False,
+    )
+    assert math.isfinite(result.score)
+    assert result.simulated_potential is not None
+    assert result.simulated_potential.shape == (20, 20, 20)
+    assert result.simulated_potential.abs().sum() > 0
