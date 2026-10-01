@@ -1,6 +1,7 @@
 """Tests for atomic-model I/O and file-level transforms."""
 
 import numpy as np
+import pytest
 import torch
 
 
@@ -21,13 +22,17 @@ def test_pdb_centroid(tiny_pdb):
     np.testing.assert_allclose([cx, cy, cz], expected, atol=1e-4)
 
 
-def test_write_atoms_roundtrip(tiny_pdb, tmp_path):
+@pytest.mark.parametrize("suffix", [".pdb", ".ent", ".cif", ".mmcif", ".CIF"])
+def test_write_atoms_roundtrip(tiny_pdb, tmp_path, suffix):
     from torch_fit_in_map_cli import read_atoms, write_atoms
 
     atoms = read_atoms(tiny_pdb)
-    out = tmp_path / "out.pdb"
+    out = tmp_path / f"out{suffix}"
     write_atoms(out, atoms)
     reloaded = read_atoms(out)
+    assert len(reloaded) == len(atoms)
+    for column in ["element", "residue", "chain", "heteroatom_flag"]:
+        assert reloaded[column].tolist() == atoms[column].tolist()
     np.testing.assert_allclose(
         reloaded[["x", "y", "z"]].to_numpy(),
         atoms[["x", "y", "z"]].to_numpy(),

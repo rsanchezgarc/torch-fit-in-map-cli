@@ -78,3 +78,44 @@ from torch_fit_in_map_cli import (
 ```
 
 For the tensor/DataFrame API (no files), use `torch-fit-in-map` directly.
+
+## Output coordinates and formats
+
+Atomic-model output uses the filename extension: `.pdb`/`.ent` write PDB,
+while `.cif`/`.mmcif` write mmCIF.
+
+The top-level JSON rotation and translation fields retain the alignment engine's
+**internal box** convention (`transform_frame: "internal_box"`). In particular,
+`translation_angstroms_zyx` is a voxel-space shift scaled to Å, not displacement
+of the original atomic model in world coordinates. It can be nonzero for a model
+that is already correctly placed; subtracting half a voxel is not a general fix.
+
+For atomic-model inputs, JSON also includes `world_transform`, with a forward
+XYZ rotation and translation in Å. For column vectors, apply it as:
+
+```python
+output_xyz = rotation_matrix_xyz @ input_xyz + translation_angstroms_xyz
+```
+
+This transform includes model centering, the box rotation center, cropping,
+and the reference map origin. It describes the same coordinates as the written
+model (up to file precision).
+
+Simulation includes all atoms read from the input, including waters and
+heteroatoms. Remove unwanted atoms before simulation or fitting. Pass `-q` or
+`--quiet` to `torch-simulate-density` to suppress progress messages.
+
+## Tests
+
+```bash
+uv sync --locked --group test
+uv run --no-sync pytest
+# Include the transform-recovery integration test:
+uv run --no-sync pytest -o addopts=""
+```
+
+The lock selects NumPy 2.4.6 on Python 3.11 and 2.5.3 on Python 3.12+.
+
+With NumPy 2.5, mrcfile 1.5.4 emits a dtype-assignment deprecation warning
+when reading headers. The test configuration ignores only that specific
+third-party warning; all other warnings remain errors.
