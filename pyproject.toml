@@ -118,7 +118,12 @@ pretty = true
 [tool.pytest.ini_options]
 minversion = "7.0"
 testpaths = ["tests"]
-filterwarnings = ["error"]
+filterwarnings = [
+    "error",
+    # mrcfile 1.5.4 assigns header.dtype when reading byte order. NumPy 2.5
+    # deprecates that assignment; retain errors for every other warning.
+    'ignore:Setting the dtype on a NumPy array has been deprecated in NumPy 2\.5\.:DeprecationWarning:numpy\._core\.records',
+]
 markers = ["slow: marks tests as slow (deselect with '-m \"not slow\"')"]
 addopts = "-m 'not slow'"
 

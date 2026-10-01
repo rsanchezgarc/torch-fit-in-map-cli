@@ -55,6 +55,7 @@ def _result_to_dict(result: object) -> dict[str, object]:
 
     r: AlignmentResult = result  # type: ignore[assignment]
     out: dict[str, object] = {
+        "transform_frame": "internal_box",
         "score": r.score,
         "rotation_matrix_zyx": r.rotation_matrix.tolist(),
         "translation_pixels_zyx": r.translation_pixels.tolist(),
@@ -82,6 +83,10 @@ def simulate(
             ),
         ),
     ] = None,
+    quiet: Annotated[
+        bool,
+        typer.Option("--quiet/--no-quiet", "-q/-Q", help="Suppress progress output."),
+    ] = False,
     device: Annotated[
         str,
         typer.Option(
@@ -119,10 +124,11 @@ def simulate(
         )
         raise typer.Exit(code=1)
 
-    typer.echo(
-        f"Simulating density from {model} at {pixel_size} Å/px, box {box_size}³ ...",
-        err=True,
-    )
+    if not quiet:
+        typer.echo(
+            f"Simulating density from {model} at {pixel_size} Å/px, box {box_size}³ ...",
+            err=True,
+        )
     atoms = read_atoms(model)
     density = DEFAULT_POTENTIAL_SIMULATOR.simulate(
         atoms=atoms,
@@ -145,10 +151,11 @@ def simulate(
         )
         ft = torch.fft.rfftn(density, norm="ortho")
         density = torch.fft.irfftn(ft * lp, s=density.shape, norm="ortho")
-        typer.echo(
-            f"Low-pass filtered to {desired_resolution} Å (cutoff={cutoff:.3f}).",
-            err=True,
-        )
+        if not quiet:
+            typer.echo(
+                f"Low-pass filtered to {desired_resolution} Å (cutoff={cutoff:.3f}).",
+                err=True,
+            )
 
     # Set MRC origin so the simulated map co-localises with the PDB in ChimeraX.
     # Simulation centres atoms at box_centre_A; the origin is where voxel [0,0,0] sits.
@@ -160,7 +167,8 @@ def simulate(
         centroid_xyz[2] - box_centre_a,
     )
     save_mrc(output, density, pixel_size=pixel_size, origin_xyz=origin_xyz)
-    typer.echo(f"Saved simulated density to {output}", err=True)
+    if not quiet:
+        typer.echo(f"Saved simulated density to {output}", err=True)
 
 
 @align_app.command()
@@ -291,7 +299,7 @@ def align(
 
     from ._mrc import load_mrc, read_mrc_header, save_mrc
     from ._orchestrate import fit_map_in_map_from_files, fit_pdb_in_map_from_files
-    from ._pdb import transform_atomic_model
+    from ._pdb import write_atoms
 
     if quiet and output is None and output_json is None:
         typer.echo(
@@ -397,6 +405,33 @@ def align(
         mobile_tensor = None
 
     data = _result_to_dict(result)
+    if is_pdb:
+        from torch_fit_in_map import apply_alignment_to_structure
+
+        from ._pdb import read_atoms
+
+        ref_shape, ref_px, ref_origin = read_mrc_header(reference)
+        atoms = read_atoms(mobile)
+        transformed = apply_alignment_to_structure(
+            atoms,
+            result,
+            pixel_size=ref_px,
+            box_shape=ref_shape,
+            sim_box_size=box_size if box_size is not None else max(ref_shape),
+            ref_origin_xyz=ref_origin,
+        )
+        # Convert the engine's pull rotation into a forward world-space affine.
+        rotation = result.rotation_matrix.detach().cpu().T.flip((0, 1)).double()
+        source = torch.tensor(atoms[["x", "y", "z"]].to_numpy(), dtype=torch.float64)
+        target = torch.tensor(
+            transformed[["x", "y", "z"]].to_numpy(), dtype=torch.float64
+        )
+        translation = (target - source @ rotation.T).mean(dim=0)
+        data["world_transform"] = {
+            "convention": "output_xyz = rotation_matrix_xyz @ input_xyz + translation_angstroms_xyz",
+            "rotation_matrix_xyz": rotation.tolist(),
+            "translation_angstroms_xyz": translation.tolist(),
+        }
     if not quiet:
         typer.echo(json.dumps(data, indent=2))
 
@@ -406,18 +441,7 @@ def align(
 
     if output is not None:
         if is_pdb:
-            ref_shape, ref_px, ref_origin = read_mrc_header(reference)
-            sim_box_size = box_size if box_size is not None else max(ref_shape)
-            transform_atomic_model(
-                input_path=mobile,
-                output_path=output,
-                rotation_matrix_zyx=result.rotation_matrix,
-                translation_pixels_zyx=result.translation_pixels,
-                pixel_size=ref_px,
-                box_shape=ref_shape,
-                sim_box_size=sim_box_size,
-                ref_origin_xyz=ref_origin,
-            )
+            write_atoms(output, transformed)
             typer.echo(f"Transformed atomic model saved to {output}", err=True)
         else:
             if mobile_tensor is None:

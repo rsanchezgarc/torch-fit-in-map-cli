@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -23,10 +24,19 @@ def read_atoms(path: str | os.PathLike[str]) -> pd.DataFrame:
 
 
 def write_atoms(path: str | os.PathLike[str], atoms: pd.DataFrame) -> None:
-    """Write an atoms DataFrame to a PDB/mmCIF file via :func:`mmdf.write`."""
+    """Write atoms as PDB or mmCIF according to the output extension."""
     import mmdf  # type: ignore[import]
 
-    mmdf.write(str(path), atoms)
+    suffix = Path(path).suffix.lower()
+    if suffix in {".cif", ".mmcif"}:
+        # mmdf.write always writes PDB, regardless of the filename extension.
+        from mmdf._gemmi_utils import df_to_structure
+
+        df_to_structure(atoms).make_mmcif_document().write_file(str(path))
+    elif suffix in {".pdb", ".ent"}:
+        mmdf.write(str(path), atoms)
+    else:
+        raise ValueError(f"Unsupported atomic-model output extension: {suffix}")
 
 
 def pdb_centroid_xyz(atoms: pd.DataFrame) -> tuple[float, float, float]:
